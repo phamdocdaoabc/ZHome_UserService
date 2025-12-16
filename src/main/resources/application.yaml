@@ -1,0 +1,112 @@
+spring:
+  application:
+    name: UserService
+
+  messages:
+    basename: messages
+    encoding: UTF-8
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/homez
+    username: admin
+    password: 12345678
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+
+  cloud:
+    config:
+      enabled: false
+
+  config:
+    import: ${SPRING_CONFIG_IMPORT:optional:configserver:http://localhost:9296}
+
+  flyway:
+    baseline-on-migrate: true
+    enabled: false
+    locations: classpath:db/migration
+
+#  zipkin:
+#    base-url: http://localhost:9411
+#
+#  sleuth:
+#    sampler:
+#      probability: 1.0
+
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: phamdocdao2@gmail.com
+    password: nbew ghxc hwvt sfgj
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  main:
+    allow-circular-references: true
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+server:
+  port: 9050
+  servlet:
+    context-path: /user-service
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetch-registry: true
+    register-with-eureka: true
+    service-url:
+      defaultZone: http://localhost:9099/eureka
+
+jwt:
+  expiration: 3600
+  refresh-expiration: 86400
+
+imagekit:
+  public-key: "public_lOHwF75DhvF0QRVhUDfV3pdU1a0="
+  private-key: "private_N/ngiIz21W/jE1ShBJZ9ZMGNoWg="
+  url-endpoint: "https://ik.imagekit.io/i1dq3puvu"
+
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: DEBUG
+      springframework:
+        web: DEBUG
+        data: DEBUG
+        boot:
+          autoconfigure:
+            data:
+              rest: DEBUG
+            orm: DEBUG
+
+management:
+  tracing:
+    enabled: false
+  zipkin:
+    tracing:
+      endpoint: ""
+  metrics:
+    export:
+      zipkin:
+        enabled: false
+
