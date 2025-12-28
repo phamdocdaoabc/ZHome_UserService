@@ -8,7 +8,6 @@ import com.gfg.userservice.domain.dto.user.UserDetailDTO;
 import com.gfg.userservice.domain.dto.user.UserFilter;
 import com.gfg.userservice.service.UserService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +16,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -28,6 +26,15 @@ import java.util.UUID;
 @RequestMapping("/api/users")
 public class UserController {
     private final UserService userService;
+
+    @GetMapping("/test")
+    public ApiResponse<String> test() {
+        return ApiResponse.<String>builder()
+                .message("Successfully")
+                .traceId(UUID.randomUUID().toString()) // chuỗi UUID random
+                .data("test user service")
+                .build();
+    }
 
     @GetMapping
     public ApiResponse<PageResponse<UserDTO>> findAll(@ParameterObject UserFilter userFilter,
@@ -49,8 +56,8 @@ public class UserController {
 
     }
 
-    @GetMapping("/{userId}")
-    public ApiResponse<UserDTO> findById(@PathVariable("userId") @NotBlank(message = "Input must not blank") Long userId) {
+    @GetMapping("/detail")
+    public ApiResponse<UserDTO> findById(@RequestParam Long userId) {
         return ApiResponse.<UserDTO>builder()
                 .message("Successfully")
                 .traceId(UUID.randomUUID().toString()) // chuỗi UUID random
@@ -69,9 +76,8 @@ public class UserController {
                 .build();
     }
 
-
-    @DeleteMapping("/{userId}")
-    public ApiResponse<Boolean> deleteById(@PathVariable("userId") @NotBlank(message = "Input must not blank") @Valid Long userId) {
+    @DeleteMapping
+    public ApiResponse<Boolean> deleteById(@RequestParam Long userId) {
         userService.deleteById(userId);
         return ApiResponse.<Boolean>builder()
                 .message("Successfully")

@@ -33,6 +33,10 @@ public class SecurityConfig {
             "/api/account/introspect"
     };
 
+    private final String[] PUBLIC_PUT_ENDPOINTS = {
+            "/api/post-package-map/status"
+    };
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
@@ -47,6 +51,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.PUT, PUBLIC_PUT_ENDPOINTS).permitAll()
                         .anyRequest().authenticated()
                 )
                 // Kích hoạt Resource Server (để tự động validate token ở các request khác)

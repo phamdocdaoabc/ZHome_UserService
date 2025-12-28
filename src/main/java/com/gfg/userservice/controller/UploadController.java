@@ -2,6 +2,7 @@ package com.gfg.userservice.controller;
 
 
 import com.gfg.userservice.domain.dto.base.ApiResponse;
+import com.gfg.userservice.domain.dto.base.ImageUploadResponse;
 import com.gfg.userservice.service.UploadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,21 +18,21 @@ public class UploadController {
     private final UploadService uploadService;
 
     @PostMapping("/image")
-    public ApiResponse<?> uploadFile(@RequestPart("file") MultipartFile file,
+    public ApiResponse<ImageUploadResponse> uploadFile(@RequestPart("file") MultipartFile file,
                                      @RequestParam(value = "folder", defaultValue = "zhome") String folder) {
-        String imageUrl = uploadService.uploadImage(file, folder);
+        ImageUploadResponse imageUploadResponse = uploadService.uploadImage(file, folder);
 
         // Trả về JSON chứa URL
-        return ApiResponse.builder()
+        return ApiResponse.<ImageUploadResponse>builder()
                 .message("Upload successful")
                 .traceId(UUID.randomUUID().toString())
-                .data(imageUrl)
+                .data(imageUploadResponse)
                 .build();
     }
 
     @PostMapping("/images")
     public ApiResponse<?> uploadFiles(@RequestPart(value = "files", required = false) MultipartFile[] files,
-                                      @RequestParam(value = "folder", defaultValue = "zhome") String folder) {
+                                           @RequestParam(value = "folder", defaultValue = "zhome") String folder) {
 
         if (files == null || files.length == 0) {
             return ApiResponse.builder()
@@ -41,7 +42,7 @@ public class UploadController {
                     .build();
         }
 
-        List<String> urls = uploadService.uploadMultipleImages(List.of(files), folder);
+        List<ImageUploadResponse> urls = uploadService.uploadMultipleImages(List.of(files), folder);
 
         return ApiResponse.builder()
                 .message("Upload successful")
@@ -49,4 +50,25 @@ public class UploadController {
                 .data(urls)
                 .build();
     }
+
+    @DeleteMapping("/image")
+    public ApiResponse<?> deleteImage(@RequestParam String fileId) {
+        uploadService.deleteImage(fileId);
+        return ApiResponse.builder()
+                .message("Delete successful")
+                .traceId(UUID.randomUUID().toString())
+                .data(null)
+                .build();
+    }
+
+    @DeleteMapping("/images")
+    public ApiResponse<?> deleteImages(@RequestParam List<String> fileIds) {
+        uploadService.deleteMultipleImages(fileIds);
+        return ApiResponse.builder()
+                .message("Delete successful")
+                .traceId(UUID.randomUUID().toString())
+                .data(null)
+                .build();
+    }
+
 }

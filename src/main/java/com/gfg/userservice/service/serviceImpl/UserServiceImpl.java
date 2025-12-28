@@ -17,15 +17,14 @@ import com.gfg.userservice.repository.specs.SpecificationUtils;
 import com.gfg.userservice.repository.specs.UserSpecification;
 import com.gfg.userservice.service.EmailService;
 import com.gfg.userservice.service.UserService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -34,7 +33,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
+@Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -57,14 +56,16 @@ public class UserServiceImpl implements UserService {
             specCredential = SpecificationUtils.addIfNotNull(specCredential, userFilter.getIsEnabled(), CredentialSpecification::hasEnabled);
             specCredential = SpecificationUtils.addIfNotNull(specCredential, userFilter.getIsAccountNonLocked(), CredentialSpecification::hasAccountNonLocked);
             Page<CredentialEntity> credentialEntityPage = credentialRepository.findAll(specCredential, pageable);
+            if (credentialEntityPage.isEmpty()) {
+                return Page.empty(pageable);
+            }
             Set<Long> userIds = credentialEntityPage.stream().map(CredentialEntity::getUserId)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
             userFilter.setIds(userIds);
         }
         // filter by user fields
-        Specification<UserEntity> spec = Specification
-                .where(null);
+        Specification<UserEntity> spec = Specification.where(null);
         spec = SpecificationUtils.addIfNotEmpty(spec, userFilter.getIds(), UserSpecification::hasIds);
         spec = SpecificationUtils.addIfHasText(spec, userFilter.getFullName(), UserSpecification::hasFullName);
         spec = SpecificationUtils.addIfHasText(spec, userFilter.getEmail(), UserSpecification::hasEmail);
@@ -107,6 +108,7 @@ public class UserServiceImpl implements UserService {
     public Long update(UserDetailDTO userDetailDTO) {
         UserEntity userEntity = userRepository.findById(userDetailDTO.getId()).orElseThrow(() -> new AppException(ErrorCodes.USER_NOT_FOUND_ID, userDetailDTO.getId()));
         userMapper.updateEntity(userDetailDTO, userEntity);
+        userEntity.setFullName(userEntity.getFirstName() +" "+userEntity.getLastName());
         userRepository.save(userEntity);
         return userEntity.getId();
     }
