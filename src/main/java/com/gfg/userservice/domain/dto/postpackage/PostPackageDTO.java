@@ -20,11 +20,13 @@ public class PostPackageDTO implements Serializable {
     private PackageType packageType;
     private String displayName;
     private BigDecimal price;
-    private Integer durationDays;
+    private Long durationDays;
     private Long listingLimit;
-    private Integer postDuration;
-    private Integer priority;
+    private Long postDuration;
+    private Long priority;
     private Boolean autoApprove;
     private String description;
-    private Integer maxPosts;
+    private Long maxPosts;
+    private Boolean isRegisterable; // Cho phép đăng ký không?
+    private Boolean isCurrentActive; // Gói hiện tại
 }

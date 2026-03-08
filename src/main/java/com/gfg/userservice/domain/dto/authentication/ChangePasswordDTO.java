@@ -13,9 +13,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ChangePasswordDTO {
     @NotBlank
-    private String userName;
-
-    @NotBlank
     String currentPassword;
 
     @NotBlank

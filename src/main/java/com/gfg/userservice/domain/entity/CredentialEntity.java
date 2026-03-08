@@ -17,13 +17,10 @@ public final class CredentialEntity extends BaseEntity{
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", unique = true, nullable = false, updatable = false)
     private Long id;
-
     @Column(name = "user_name",unique = true)
     private String userName;
-
     private String password;
     private Long userId;
-
     @Enumerated(EnumType.STRING)
     private RoleBase role;
     private Boolean isEnabled;

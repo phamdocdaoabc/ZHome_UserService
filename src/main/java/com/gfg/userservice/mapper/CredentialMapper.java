@@ -9,6 +9,5 @@ public interface CredentialMapper {
     CredentialEntity toEntity(CredentialDTO credentialDTO);
 
     CredentialDTO toDTO(CredentialEntity credentialEntity);
-
 }
 

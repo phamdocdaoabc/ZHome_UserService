@@ -1,7 +1,6 @@
 package com.gfg.userservice.repository.specs;
 
 import com.gfg.userservice.domain.entity.PostPackageMapEntity;
-import com.gfg.userservice.domain.entity.UserEntity;
 import com.gfg.userservice.domain.enums.PostPackageStatus;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -21,7 +20,6 @@ public class PostPackageMapSpecification {
             if (date == null) {
                 return null;
             }
-
             // 1. Lấy thời điểm bắt đầu ngày (00:00:00)
             LocalDateTime startOfDay = date.atStartOfDay();
 
@@ -35,5 +33,9 @@ public class PostPackageMapSpecification {
 
     public static Specification<PostPackageMapEntity> hasPackageIds(Collection<Long> packageIds) {
         return (root, query, cb) -> root.get("packageId").in(packageIds);
+    }
+
+    public static Specification<PostPackageMapEntity> hasUserId(Long userId) {
+        return (root, query, cb) -> cb.equal(root.get("userId"), userId);
     }
 }

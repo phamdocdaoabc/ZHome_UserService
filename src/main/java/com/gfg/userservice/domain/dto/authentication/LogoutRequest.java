@@ -1,6 +1,5 @@
 package com.gfg.userservice.domain.dto.authentication;
 
-import com.gfg.userservice.domain.dto.user.UserInfoDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,9 +9,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LoginResponse {
-    private boolean islogin;
-    private String accessToken;
+public class LogoutRequest {
     private String refreshToken;
-    private UserInfoDTO user;
 }

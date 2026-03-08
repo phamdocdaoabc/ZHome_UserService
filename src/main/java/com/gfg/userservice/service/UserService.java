@@ -11,4 +11,5 @@ public interface UserService {
     UserDTO findById(Long userId);
     Long update(UserDetailDTO userDetailDTO);
     void deleteById(Long userId);
+    Long countTotalUserNew();
 }

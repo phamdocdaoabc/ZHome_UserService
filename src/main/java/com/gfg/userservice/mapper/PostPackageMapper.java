@@ -11,11 +11,13 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface PostPackageMapper {
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "packageType", ignore = true)
     PostPackageEntity toEnity(PostPackageDTO postPackageDTO);
 
     PostPackageDTO toDTO(PostPackageEntity postPackageEntity);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "packageType", ignore = true)
     void updateEntity(PostPackageDTO dto, @MappingTarget PostPackageEntity entity);
 
     List<PostPackageDTO> toDTOList(List<PostPackageEntity> postPackageEntities);

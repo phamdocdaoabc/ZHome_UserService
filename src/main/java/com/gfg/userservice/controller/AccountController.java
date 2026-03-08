@@ -1,7 +1,9 @@
 package com.gfg.userservice.controller;
 
+import com.gfg.userservice.constant.ErrorCodes;
 import com.gfg.userservice.domain.dto.authentication.*;
 import com.gfg.userservice.domain.dto.base.ApiResponse;
+import com.gfg.userservice.exceptions.AppException;
 import com.gfg.userservice.service.AuthenticationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +27,7 @@ public class AccountController {
         return ApiResponse.<String>builder()
                 .message("Success")
                 .traceId(UUID.randomUUID().toString())
-                .data("User registered successfully. Please check your email to activate your account.")
+                .data("Đăng ký thành công. Vui lòng check email để kích hoạt tài khoản!")
                 .build();
     }
 
@@ -59,6 +61,15 @@ public class AccountController {
                 .build();
     }
 
+    @PostMapping("/refresh-token")
+    public ApiResponse<LoginResponse> refresh(@RequestBody @Valid TokenDTO request) {
+        return ApiResponse.<LoginResponse>builder()
+                .message("Success")
+                .traceId(UUID.randomUUID().toString())
+                .data(authenticationService.refreshToken(request))
+                .build();
+    }
+
     @PostMapping("/forgot-password")
     public ApiResponse<String> forgotPassword(@RequestParam("email") String email) {
         authenticationService.forgotPassword(email);
@@ -79,13 +90,22 @@ public class AccountController {
                 .build();
     }
 
-    @PostMapping("/logout")
-    public ApiResponse<String> logout(@RequestBody TokenDTO request){
-        authenticationService.logout(request);
-        return ApiResponse.<String>builder()
-                .message("Success")
-                .traceId(UUID.randomUUID().toString())
-                .data("Logout successful")
+    @PostMapping("/logout") // Đổi tên method cho chuẩn
+    public ApiResponse<Void> logout(@RequestHeader("Authorization") String authorizationHeader,
+                                    @RequestBody LogoutRequest request) {
+        // 1. Cắt chuỗi "Bearer " để lấy token
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new AppException(ErrorCodes.INVALID_TOKEN);
+        }
+        String token = authorizationHeader.substring(7); // Bỏ 7 ký tự đầu "Bearer "
+        authenticationService.logout(token);
+
+        if (request.getRefreshToken() != null && !request.getRefreshToken().isEmpty()) {
+            authenticationService.logout(request.getRefreshToken());
+        }
+
+        return ApiResponse.<Void>builder()
+                .message("Logout successful")
                 .build();
     }
 

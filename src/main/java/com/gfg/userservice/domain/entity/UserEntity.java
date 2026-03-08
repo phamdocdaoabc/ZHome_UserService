@@ -32,11 +32,16 @@ public class UserEntity extends BaseEntity {
     private String imageUrl;
     @Email(message = "*Input must be in Email format!**")
     private String email;
+
     private String phone;
+
     private String address;
+
     private String bio;
+
     @Enumerated(EnumType.STRING)
     private Sex sex;
+
     private LocalDate birthday;
 
 }

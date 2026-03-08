@@ -65,6 +65,15 @@ public class UserController {
                 .build();
     }
 
+    @GetMapping("/current")
+    public ApiResponse<UserDTO> findUserCurrent() {
+        return ApiResponse.<UserDTO>builder()
+                .message("Successfully")
+                .traceId(UUID.randomUUID().toString()) // chuỗi UUID random
+                .data(userService.findById(null))
+                .build();
+    }
+
     @PutMapping
     public ApiResponse<IdsResponse<Long>> update(@RequestBody @NotNull(message = "Input must not null") @Valid UserDetailDTO userDetailDTO) {
         return ApiResponse.<IdsResponse<Long>>builder()
@@ -83,6 +92,15 @@ public class UserController {
                 .message("Successfully")
                 .traceId(UUID.randomUUID().toString())
                 .data(true)
+                .build();
+    }
+
+    @GetMapping("/count-user-new")
+    public ApiResponse<Long> getCountUserNew() {
+        return ApiResponse.<Long>builder()
+                .message("Successfully")
+                .traceId(UUID.randomUUID().toString())
+                .data(userService.countTotalUserNew())
                 .build();
     }
 }

@@ -1,6 +1,7 @@
 package com.gfg.userservice.config;
 
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +22,9 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
     private final String[] PUBLIC_GET_ENDPOINTS = {
             "/.well-known/jwks.json",
-            "/api/account/activate"
+            "/api/account/activate",
+            "/api/users",
+            "/api/users/detail"
     };
 
     private final String[] PUBLIC_POST_ENDPOINTS = {
@@ -30,7 +33,8 @@ public class SecurityConfig {
             "/api/account/resend",
             "/api/account/forgot-password",
             "/api/account/logout",
-            "/api/account/introspect"
+            "/api/account/introspect",
+            "/api/account/refresh-token"
     };
 
     private final String[] PUBLIC_PUT_ENDPOINTS = {
@@ -55,7 +59,15 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 // Kích hoạt Resource Server (để tự động validate token ở các request khác)
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(Customizer.withDefaults())
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            // Tùy chỉnh trả về lỗi 401 khi Token sai/hết hạn
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.getWriter().write("{\"error\": \"Token không hợp lệ hoặc đã hết hạn\"}");
+                        })
+                );
 
         return httpSecurity.build();
     }

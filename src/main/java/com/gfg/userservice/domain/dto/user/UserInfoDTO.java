@@ -8,16 +8,15 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
-@Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
+@Data
 @Builder
-public class CredentialDTO implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class UserInfoDTO implements Serializable {
     private Long id;
-    private String userName;
+    private String fullName;
+    private String imageUrl;
+    private String address;
+    private String username;
     private RoleBase role;
-    private Boolean isEnabled;
-    private Boolean isAccountNonLocked;
 }

@@ -22,4 +22,5 @@ public class PostPackageFilterDTO implements Serializable {
     private PostPackageStatus status;
     private LocalDate startDate;
     private Set<Long> packageIds;
+    private Boolean isCurrent;
 }

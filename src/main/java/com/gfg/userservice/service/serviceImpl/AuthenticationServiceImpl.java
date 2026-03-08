@@ -2,6 +2,7 @@ package com.gfg.userservice.service.serviceImpl;
 
 import com.gfg.userservice.constant.ErrorCodes;
 import com.gfg.userservice.domain.dto.authentication.*;
+import com.gfg.userservice.domain.dto.user.UserInfoDTO;
 import com.gfg.userservice.domain.entity.CredentialEntity;
 import com.gfg.userservice.domain.entity.UserEntity;
 import com.gfg.userservice.domain.entity.VerificationTokenEntity;
@@ -10,6 +11,7 @@ import com.gfg.userservice.exceptions.AppException;
 import com.gfg.userservice.repository.CredentialRepository;
 import com.gfg.userservice.repository.UserRepository;
 import com.gfg.userservice.repository.VerificationTokenRepository;
+import com.gfg.userservice.security.SecurityUtils;
 import com.gfg.userservice.service.AuthenticationService;
 import com.gfg.userservice.service.EmailService;
 import com.nimbusds.jose.JOSEException;
@@ -62,6 +64,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         // check userName
         CredentialEntity credentialEntity = credentialRepository.findByUserName(request.getUserName())
                 .orElseThrow(() -> new AppException(ErrorCodes.CREDENTIAL_NOT_FOUND));
+
         // check password
         if (!passwordEncoder.matches(request.getPassword(), credentialEntity.getPassword())) {
             throw new AppException(ErrorCodes.USER_008);
@@ -76,17 +79,30 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (!credentialEntity.getIsAccountNonLocked()) {
             throw new AppException(ErrorCodes.USER_012);
         }
+        UserEntity userEntity = userRepository.findById(credentialEntity.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCodes.USER_NOT_FOUND));
 
-        var token = generateToken(credentialEntity);
+        // 1. Sinh Access Token (Ngắn hạn)
+        var accessToken = generateToken(credentialEntity, EXPIRATION);
+
+        // 2. Sinh Refresh Token (Dài hạn)
+        var refreshToken = generateToken(credentialEntity, REFRESH_EXPIRATION);
         return LoginResponse.builder()
-                .token(token)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .islogin(true)
-                .userName(credentialEntity.getUserName())
-                .role(credentialEntity.getRole().name())
+                .user(UserInfoDTO.builder()
+                        .id(userEntity.getId())
+                        .fullName(userEntity.getFullName())
+                        .imageUrl(userEntity.getImageUrl())
+                        .address(userEntity.getAddress())
+                        .username(credentialEntity.getUserName())
+                        .role(credentialEntity.getRole())
+                        .build())
                 .build();
     }
 
-    private String generateToken(CredentialEntity credentialEntity) {
+    private String generateToken(CredentialEntity credentialEntity, long durationSeconds) {
         Instant now = Instant.now();
         // Xây dựng scope từ Roles
         StringJoiner stringJoiner = new StringJoiner(" ");
@@ -97,7 +113,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("UserService")
                 .issuedAt(now)
-                .expiresAt(now.plus(EXPIRATION, ChronoUnit.SECONDS))
+                // Hết hạn dựa trên tham số truyền vào
+                .expiresAt(now.plus(durationSeconds, ChronoUnit.SECONDS))
                 .subject(credentialEntity.getUserName())
                 .id(UUID.randomUUID().toString())
                 .claim("scope", stringJoiner.toString())
@@ -107,40 +124,34 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 
-    private SignedJWT verifyToken(String token, boolean isRefresh) {
+    private SignedJWT verifyToken(String token) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
             JWSVerifier verifier = new RSASSAVerifier(publicKey);
 
-            try {
-                if (!signedJWT.verify(verifier)) throw new AppException(ErrorCodes.USER_009);
-            } catch (JOSEException e) {
-                throw new AppException(ErrorCodes.INVALID_TOKEN, e);
-            }
+            if (!signedJWT.verify(verifier)) throw new AppException(ErrorCodes.USER_009);
 
+            // Check thời gian hết hạn chuẩn trong token
             Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-            Date now = new Date();
-            if (isRefresh) {
-                expiryTime = new Date(expiryTime.toInstant().plus(REFRESH_EXPIRATION, ChronoUnit.SECONDS).toEpochMilli());
-            }
+            if (expiryTime.before(new Date())) throw new AppException(ErrorCodes.INVALID_TOKEN); // Token Expired
 
-            if (expiryTime.before(now)) throw new AppException(ErrorCodes.USER_009);
-
+            // Check xem token có nằm trong blacklist (đã logout hoặc đã refresh) chưa
             if (verificationTokenRepository.existsByVerifToken(signedJWT.getJWTClaimsSet().getJWTID())) {
-                throw new AppException(ErrorCodes.USER_009);
+                throw new AppException(ErrorCodes.INVALID_TOKEN); // Token Invalid/Revoked
             }
+
             return signedJWT;
-        } catch (ParseException e) {
-            System.out.println("Lỗi: Chuỗi token không đúng định dạng (Rác)");
+        } catch (ParseException | JOSEException e) {
             throw new AppException(ErrorCodes.INVALID_TOKEN);
         }
     }
 
     @Override
     @Transactional
-    public void logout(TokenDTO request) {
+    public void logout(String token) {
         try {
-            var signedJWT = verifyToken(request.getToken(), true);
+            // Verify để lấy ID và Expiry, dù hết hạn cũng parse để lấy ID blacklist
+            var signedJWT = verifyToken(token);
             String jit = signedJWT.getJWTClaimsSet().getJWTID();
             Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
 
@@ -148,31 +159,41 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .verifToken(jit)
                     .expireDate(expiryTime)
                     .build());
-        } catch (AppException e) {
-            log.info("Token already expired");
         } catch (ParseException e) {
-            System.out.println("Lỗi: Chuỗi token không đúng định dạng (Rác)");
+            log.info("Token format invalid");
         }
     }
 
     @Override
     public LoginResponse refreshToken(TokenDTO request) {
         try {
-            var signedJWT = verifyToken(request.getToken(), true);
-
+            // 1. Verify Refresh Token (Token đầu vào phải là Refresh Token)
+            var signedJWT = verifyToken(request.getToken());
+            // 2. Lấy JIT (ID của token) và hạn sử dụng
             var jit = signedJWT.getJWTClaimsSet().getJWTID();
             var expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+
+            // 3. Token Rotation: Blacklist cái Refresh Token cũ này ngay lập tức
+            // Để đảm bảo nó không được dùng lần 2.
             verificationTokenRepository.save(VerificationTokenEntity.builder()
                     .verifToken(jit)
                     .expireDate(expiryTime)
                     .build());
 
             String username = signedJWT.getJWTClaimsSet().getSubject();
-            var credentialEntity = credentialRepository.findByUserName(username)
+            CredentialEntity credentialEntity = credentialRepository.findByUserName(username)
                     .orElseThrow(() -> new AppException(ErrorCodes.CREDENTIAL_NOT_FOUND));
 
+            UserEntity userEntity = userRepository.findById(credentialEntity.getUserId())
+                    .orElseThrow(() -> new AppException(ErrorCodes.USER_NOT_FOUND));
+
+            // 5. Cấp cặp Token MỚI (New Access + New Refresh)
+            var newAccessToken = generateToken(credentialEntity, EXPIRATION);
+            var newRefreshToken = generateToken(credentialEntity, REFRESH_EXPIRATION);
+
             return LoginResponse.builder()
-                    .token(generateToken(credentialEntity))
+                    .accessToken(newAccessToken)
+                    .refreshToken(newRefreshToken) // Trả về Refresh Token mới
                     .islogin(true)
                     .build();
         } catch (ParseException e) {
@@ -186,7 +207,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         var token = introspectRequest.getToken();
         boolean valid = true;
         try {
-            verifyToken(token, false);
+            verifyToken(token);
         } catch (AppException e) {
             valid = false;
         }
@@ -201,7 +222,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         try {
             // 1. Verify token (dùng public key check chữ ký & hạn dùng)
             // Lưu ý: Reuse hàm verifyToken public key ở bài trước
-            SignedJWT signedJWT = verifyToken(token, false);
+            SignedJWT signedJWT = verifyToken(token);
 
             // 2. Check xem có đúng là token kích hoạt không?
             String type = signedJWT.getJWTClaimsSet().getStringClaim("type");
@@ -343,23 +364,26 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public void changePassword(ChangePasswordDTO changePasswordDTO) {
+        Long userId = SecurityUtils.getCurrentUserId()
+                .orElseThrow(() -> new AppException(ErrorCodes.USER_016));
+
         // Tìm user theo username
-        CredentialEntity credential = credentialRepository.findByUserName(changePasswordDTO.getUserName())
+        CredentialEntity credential = credentialRepository.findByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCodes.CREDENTIAL_NOT_FOUND));
 
         // Kiểm tra mật khẩu hiện tại
         if (!passwordEncoder.matches(changePasswordDTO.getCurrentPassword(), credential.getPassword())) {
-            throw new IllegalArgumentException("Current password is incorrect.");
+            throw new AppException(ErrorCodes.USER_008);
         }
 
         // Kiểm tra độ dài của mật khẩu mới
-        if (changePasswordDTO.getNewPassword().length() < 6) {
-            throw new IllegalArgumentException("New password must be at least 6 characters long.");
+        if (changePasswordDTO.getNewPassword().length() < 8) {
+            throw new AppException(ErrorCodes.USER_014);
         }
 
         // Kiểm tra mật khẩu mới và xác nhận mật khẩu
         if (!changePasswordDTO.getNewPassword().equals(changePasswordDTO.getConfirmPassword())) {
-            throw new IllegalArgumentException("New password and confirm password do not match.");
+            throw new AppException(ErrorCodes.USER_018);
         }
 
         // Cập nhật mật khẩu mới

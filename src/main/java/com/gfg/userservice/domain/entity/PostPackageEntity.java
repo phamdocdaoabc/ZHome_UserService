@@ -5,7 +5,6 @@ import com.gfg.userservice.domain.enums.PackageType;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
 
 @Entity
 @Table(name = "post_packages")
@@ -31,16 +30,16 @@ public class PostPackageEntity extends BaseEntity  {
     private Double price;
 
     @Column(name = "duration_days", nullable = false)
-    private Integer durationDays;
+    private Long durationDays;
 
     @Column(name = "listing_limit")
     private Long listingLimit;
 
     @Column(name = "post_duration")
-    private Integer postDuration;
+    private Long postDuration;
 
     @Column(name = "priority")
-    private Integer priority;
+    private Long priority;
 
     @Column(name = "auto_approve", nullable = false)
     private Boolean autoApprove;
@@ -49,5 +48,5 @@ public class PostPackageEntity extends BaseEntity  {
     private String description;
 
     @Column(name = "max_posts")
-    private Integer maxPosts;
+    private Long maxPosts;
 }
